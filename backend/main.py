@@ -41,7 +41,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 # Conexión MongoDB
 MONGO_URI = os.getenv("MONGO_URI")
 client = pymongo.MongoClient(MONGO_URI)
-db = client["examen_db"] # Nombre de la BD
+db = client.get_default_database()
 users_collection = db["users"]
 items_collection = db["items"] # Aquí guardaremos los lugares/posts
 
