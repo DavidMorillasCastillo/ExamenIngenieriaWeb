@@ -4,74 +4,207 @@
     <meta charset="UTF-8">
     <title>ReViews - Examen</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
     <style>
-        /* Estilos específicos para el listado */
-        #reviewListContainer { max-height: 400px; overflow-y: auto; border: 1px solid #ddd; margin-top: 10px; padding: 10px; }
-        .review-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
-        .review-item:hover { background-color: #f9f9f9; }
-        .stars { color: gold; }
+        body { 
+            font-family: 'Roboto', sans-serif; 
+            padding: 0; 
+            margin: 0; 
+            background: #f0f2f5; /* Fondo gris suave */
+            color: #333;
+        }
+
+        .container { 
+            max-width: 1200px; 
+            margin: 30px auto; 
+            background: transparent; 
+            padding: 0 20px;
+        }
+
+        /* HEADER */
+        .header {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            background: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+        .header h1 { margin: 0; color: #1a73e8; }
+        .btn-logout { 
+            background: #ff4d4f; color: white; border: none; padding: 10px 20px; 
+            border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s;
+        }
+        .btn-logout:hover { background: #d9363e; }
+
+        /* PANELES (Tarjetas) */
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        /* FORMULARIOS */
+        input[type="text"], input[type="number"], input[type="file"] { 
+            width: 100%; 
+            padding: 12px; 
+            margin-bottom: 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            box-sizing: border-box;
+            background: #f9f9f9;
+        }
+        button.primary-btn {
+            width: 100%;
+            padding: 12px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        button.primary-btn:hover { background: #1557b0; }
+
+        /* LISTA DE RESEÑAS */
+        #reviewListContainer { 
+            max-height: 500px; 
+            overflow-y: auto; 
+            border: 1px solid #eee; 
+            border-radius: 8px;
+        }
+        .review-item { 
+            padding: 15px; 
+            border-bottom: 1px solid #eee; 
+            cursor: pointer; 
+            transition: background 0.2s;
+        }
+        .review-item:hover { background-color: #f1f8ff; }
+        .review-item strong { font-size: 1.1em; color: #2c3e50; }
+        .stars { color: #f1c40f; letter-spacing: 2px; }
+
+        /* DETALLES */
+        #detailsPanel {
+            display: none; 
+            border-left: 5px solid #1a73e8; /* Borde decorativo */
+        }
+        .detail-header { margin-bottom: 20px; }
+        .detail-image { 
+            width: 100%; 
+            height: 250px; 
+            object-fit: cover; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* SECCIÓN TÉCNICA (El Token) */
+        .tech-info {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.85em;
+            color: #666;
+        }
+        .tech-info h4 { margin-top: 0; color: #444; border-bottom: 1px solid #ddd; padding-bottom: 5px;}
+        .token-box {
+            word-break: break-all;
+            font-family: monospace;
+            background: #eee;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 5px;
+            display: block;
+        }
+
+        /* GRID LAYOUT */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h1>⭐ ReViews</h1>
-            <button onclick="logout()" style="background: red;">Salir</button>
+        <div class="header">
+            <div>
+                <h1>⭐ ReViews</h1>
+                <span id="userInfo" style="color: #666; font-size: 0.9em;">Cargando...</span>
+            </div>
+            <button class="btn-logout" onclick="logout()">Cerrar Sesión</button>
         </div>
-        <p id="userInfo">Cargando...</p>
 
-        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 20px;">
-            
-            <div style="flex: 1;">
-                <h3>📝 Nueva Reseña</h3>
+        <div class="grid-2">
+            <div class="card">
+                <h3>📝 Escribir nueva reseña</h3>
                 <form id="reviewForm">
-                    <input type="text" id="revName" placeholder="Nombre Establecimiento" required>
-                    <input type="text" id="revAddress" placeholder="Dirección Postal" required>
-                    <label>Valoración (0-5):</label>
-                    <input type="number" id="revRating" min="0" max="5" required>
+                    <input type="text" id="revName" placeholder="Nombre del Establecimiento" required>
+                    <input type="text" id="revAddress" placeholder="Dirección Postal (Calle, Ciudad)" required>
+                    
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Valoración:</label>
+                    <input type="number" id="revRating" min="0" max="5" placeholder="0 - 5" required>
+                    
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Foto:</label>
                     <input type="file" id="revFile" required>
-                    <button type="submit" style="background: green;">Publicar Reseña</button>
+                    
+                    <button type="submit" class="primary-btn">Publicar Opinión</button>
                 </form>
             </div>
 
-            <div style="flex: 1;">
-                <h3>📍 Centrar Mapa</h3>
-                <p>Busca una calle para mover el mapa:</p>
-                <div style="display: flex; gap: 5px;">
-                    <input type="text" id="mapSearchAddress" placeholder="Ej: Calle Larios, Málaga">
-                    <button onclick="searchMapLocation()">Buscar</button>
+            <div class="card">
+                <h3>📍 Explorar Mapa</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="mapSearchAddress" placeholder="Ej: Torre Eiffel, París" style="margin-bottom: 0;">
+                    <button onclick="searchMapLocation()" style="background: #333; color: white; border: none; padding: 0 20px; border-radius: 8px; cursor: pointer;">Buscar</button>
                 </div>
-                <br>
-                <div id="map" style="height: 250px; border: 1px solid #ccc;"></div>
+                <div id="map" style="height: 300px; border-radius: 8px; border: 1px solid #ddd;"></div>
             </div>
         </div>
 
-        <hr>
-
-        <div style="display: flex; gap: 20px;">
+        <div class="grid-2">
             
-            <div style="flex: 1;">
-                <h3>📋 Listado de Reseñas</h3>
-                <p><small>Haz clic en una reseña o marcador para ver detalles</small></p>
+            <div class="card">
+                <h3>📋 Últimas Reseñas</h3>
+                <p style="color: #666; font-size: 0.9em;">Haz clic en una reseña para ver los detalles completos.</p>
                 <div id="reviewListContainer">
-                    <ul id="reviewsList" style="list-style: none; padding: 0;"></ul>
+                    <ul id="reviewsList" style="list-style: none; padding: 0; margin: 0;"></ul>
                 </div>
             </div>
 
-            <div id="detailsPanel" style="flex: 1; border: 1px solid #007bff; padding: 15px; border-radius: 8px; display: none;">
-                <h3 style="margin-top: 0;">ℹ️ Detalles de la Reseña</h3>
-                <h2 id="detName">Nombre</h2>
-                <div id="detRating" class="stars"></div>
-                <p>📍 <span id="detAddress">Dirección</span></p>
-                <hr>
-                <p><strong>Autor:</strong> <span id="detAuthor"></span></p>
-                <p><strong>Token Emitido:</strong> <span id="detIat"></span></p>
-                <p><strong>Token Caduca:</strong> <span id="detExp"></span></p>
-                <p style="word-break: break-all; font-size: 0.8em; color: gray;"><strong>Token:</strong> <span id="detToken"></span></p>
-                <img id="detImage" src="" style="width: 100%; max-height: 200px; object-fit: cover; margin-top: 10px; border-radius: 5px;">
-                <br><br>
-                <button onclick="closeDetails()" style="background: gray;">Cerrar Detalles</button>
+            <div id="detailsPanel" class="card">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div class="detail-header">
+                        <h2 id="detName" style="margin: 0; color: #1a73e8;">Nombre</h2>
+                        <div id="detRating" class="stars" style="font-size: 1.5em; margin: 5px 0;"></div>
+                        <p style="margin: 0; color: #555;">📍 <span id="detAddress">Dirección</span></p>
+                    </div>
+                    <button onclick="closeDetails()" style="background: transparent; border: 1px solid #ccc; padding: 5px 10px; border-radius: 4px; cursor: pointer;">✕ Cerrar</button>
+                </div>
+
+                <img id="detImage" src="" class="detail-image" alt="Foto reseña">
+                
+                <div style="margin-top: 20px;">
+                    <p><strong>👤 Autor:</strong> <span id="detAuthor"></span></p>
+                </div>
+
+                <div class="tech-info">
+                    <h4>🛠️ Datos Técnicos del Examen</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div><strong>Emitido:</strong> <span id="detIat"></span></div>
+                        <div><strong>Caduca:</strong> <span id="detExp"></span></div>
+                    </div>
+                    <br>
+                    <strong>Token OAuth Original:</strong>
+                    <span id="detToken" class="token-box"></span>
+                </div>
             </div>
         </div>
 
