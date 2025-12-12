@@ -1,7 +1,6 @@
-const API_URL = "http://localhost:8000"; // IMPORTANTE: CAMBIAR ESTO EL DÍA DEL EXAMEN SI ESTAS EN RENDER
-//const API_URL = "https://exameningenieriaweb.onrender.com";
 // CAMBIAR URL EN PRODUCCIÓN
-
+//const API_URL = "http://localhost:8000"; 
+const API_URL = "https://exameningenieriaweb.onrender.com/";
 
 const token = localStorage.getItem("token");
 const myEmail = localStorage.getItem("username");
@@ -28,17 +27,17 @@ async function loadReviews() {
         const reviews = await res.json();
 
         reviews.forEach(rev => {
-            // A. Añadir a la lista HTML [cite: 14]
+            // A. Añadir a la lista HTML
             const li = document.createElement("li");
             li.className = "review-item";
             li.innerHTML = `
                 <strong>${rev.establishment}</strong> <span class="stars">★ ${rev.rating}</span><br>
                 <small>${rev.address}</small>
             `;
-            li.onclick = () => showDetails(rev); // Al hacer clic muestra detalles [cite: 20]
+            li.onclick = () => showDetails(rev); // Al hacer clic muestra detalles
             list.appendChild(li);
 
-            // B. Añadir al Mapa [cite: 32]
+            // B. Añadir al Mapa
             if (rev.latitude && rev.longitude) {
                 const marker = L.marker([rev.latitude, rev.longitude]).addTo(map);
                 // Al hacer clic en marcador también muestra detalles
@@ -65,9 +64,29 @@ function showDetails(rev) {
     document.getElementById("detName").innerText = rev.establishment;
     document.getElementById("detAddress").innerText = rev.address;
     document.getElementById("detRating").innerText = "★".repeat(rev.rating) + "☆".repeat(5 - rev.rating);
-    document.getElementById("detImage").src = rev.image_url;
+    
+    // --- NUEVO: Rellenar MÚLTIPLES IMÁGENES ---
+    const container = document.getElementById("detImagesContainer");
+    container.innerHTML = ""; // Limpiar fotos anteriores
+    
+    // El backend ahora devuelve 'image_urls' (lista), no 'image_url' (string)
+    // Pero por compatibilidad si tienes datos viejos, comprobamos ambos o solo el nuevo si borraste la BD.
+    const images = rev.image_urls || (rev.image_url ? [rev.image_url] : []);
+    
+    if (images.length > 0) {
+        images.forEach(url => {
+            const img = document.createElement("img");
+            img.src = url;
+            // Estilos aplicados en CSS, forzamos atributos básicos
+            img.alt = "Foto reseña";
+            container.appendChild(img);
+        });
+    } else {
+        container.innerHTML = "<p>Sin imágenes</p>";
+    }
+    // -------------------------------------------
 
-    // Rellenar datos técnicos (Token, Autor, Fechas) [cite: 21-24]
+    // Rellenar datos técnicos (Token, Autor, Fechas)
     document.getElementById("detAuthor").innerText = `${rev.author_name} (${rev.author_email})`;
     
     // Convertir timestamps a fecha legible
@@ -90,7 +109,14 @@ document.getElementById("reviewForm").addEventListener("submit", async (e) => {
     formData.append("establishment", document.getElementById("revName").value);
     formData.append("address", document.getElementById("revAddress").value);
     formData.append("rating", document.getElementById("revRating").value);
-    formData.append("file", document.getElementById("revFile").files[0]);
+    
+    // --- CAMBIO PARA MÚLTIPLES ARCHIVOS ---
+    const fileInput = document.getElementById("revFiles"); // Ojo al ID plural 'revFiles'
+    // Recorremos todos los archivos seleccionados y los añadimos
+    for (let i = 0; i < fileInput.files.length; i++) {
+        formData.append("files", fileInput.files[i]);
+    }
+    // --------------------------------------
 
     const res = await fetch(`${API_URL}/reviews`, { 
         method: "POST", 
@@ -107,7 +133,7 @@ document.getElementById("reviewForm").addEventListener("submit", async (e) => {
     }
 });
 
-// --- 4. BUSCAR EN MAPA (CENTRADO) [cite: 34] ---
+// --- 4. BUSCAR EN MAPA (CENTRADO) ---
 async function searchMapLocation() {
     const address = document.getElementById("mapSearchAddress").value;
     if (!address) return;

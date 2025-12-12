@@ -94,7 +94,7 @@ class ReviewResponse(BaseModel):
     establishment: str
     address: str
     rating: int
-    image_url: str
+    image_urls: List[str] 
     latitude: float
     longitude: float
     author_email: str
@@ -143,31 +143,30 @@ async def create_review(
     establishment: str = Form(...),
     address: str = Form(...),
     rating: int = Form(...),
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...), # <--- CAMBIO: Recibe lista de archivos
     user_data: dict = Depends(get_current_user)
 ):
-    # 1. Subir imagen (Requisito: Imágenes [cite: 29])
-    up_res = cloudinary.uploader.upload(file.file)
-    image_url = up_res.get("secure_url")
+    # 1. Subir imágenes (Bucle)
+    uploaded_urls = []
+    for file in files:
+        # Subimos cada archivo individualmente a Cloudinary
+        up_res = cloudinary.uploader.upload(file.file)
+        uploaded_urls.append(up_res.get("secure_url"))
 
-    # 2. Geocoding (Requisito: Mapas y Geocoding [cite: 33])
     lat, lon = await get_coordinates(address)
 
-    # 3. Extraer datos del token (Requisito: Creación de reseñas [cite: 27, 28])
-    # El examen pide guardar el token, fechas y autor tomados del token.
     token_payload = user_data["payload"]
     
     new_review = {
         "establishment": establishment,
         "address": address,
         "rating": rating,
-        "image_url": image_url,
+        "image_urls": uploaded_urls, # <--- Guardamos la lista
         "latitude": lat,
         "longitude": lon,
-        # Datos del autor y token
         "author_email": user_data["email"],
         "author_name": token_payload.get("name", "Anónimo"),
-        "raw_token": user_data["raw_token"], # Guardamos el token usado
+        "raw_token": user_data["raw_token"],
         "token_issued_at": token_payload.get("iat", 0),
         "token_expires_at": token_payload.get("exp", 0)
     }
