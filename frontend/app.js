@@ -1,6 +1,6 @@
 // CAMBIAR URL EN PRODUCCIÓN
 //const API_URL = "http://localhost:8000"; 
-const API_URL = "https://exameningenieriaweb.onrender.com/";
+const API_URL = "https://exameningenieriaweb.onrender.com";
 
 const token = localStorage.getItem("token");
 const myEmail = localStorage.getItem("username");
