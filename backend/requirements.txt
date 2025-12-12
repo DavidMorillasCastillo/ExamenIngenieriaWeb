@@ -8,3 +8,5 @@ pydantic
 passlib
 python-jose[cryptography]
 cloudinary
+google-auth
+requests
