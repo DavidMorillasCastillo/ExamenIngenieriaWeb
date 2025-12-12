@@ -37,9 +37,9 @@ client = pymongo.MongoClient(MONGO_URI)
 db = client.get_default_database()
 
 users_collection = db["users"]
-items_collection = db["items"] # Colección genérica de ejemplo
+reviews_collection = db["reviews"] # Colección principal del examen
 
-app = FastAPI(title="Esqueleto API Google")
+app = FastAPI(title="ReViews API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -66,7 +66,7 @@ def create_access_token(data: dict):
 async def get_coordinates(address: str):
     async with httpx.AsyncClient() as client:
         url = "https://nominatim.openstreetmap.org/search"
-        headers = {"User-Agent": "EsqueletoWeb/1.0"}
+        headers = {"User-Agent": "ExamenWeb/1.0"}
         try:
             resp = await client.get(url, params={"q": address, "format": "json", "limit": 1}, headers=headers)
             data = resp.json()
@@ -77,65 +77,101 @@ async def get_coordinates(address: str):
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
+        # Decodificamos el token NUESTRO para saber quien es
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if not email: raise HTTPException(status_code=401)
+        # Devolvemos también el token en crudo porque el examen pide guardarlo
+        return {"email": email, "raw_token": token, "payload": payload}
     except JWTError: raise HTTPException(status_code=401)
-    return {"email": email}
 
 # --- MODELOS ---
 class GoogleLoginRequest(BaseModel):
     token: str
 
-class ItemResponse(BaseModel):
+class ReviewResponse(BaseModel):
     id: str
-    title: str
+    establishment: str
+    address: str
+    rating: int
     image_url: str
+    latitude: float
+    longitude: float
+    author_email: str
+    author_name: str
+    token_issued_at: float
+    token_expires_at: float
+    raw_token: str
 
-# --- ENDPOINTS AUTH ---
+# --- ENDPOINTS AUTH (GOOGLE) ---
 
 @app.get("/")
-def read_root(): return {"message": "API Esqueleto Funcionando 💀"}
+def read_root(): return {"message": "API ReViews Funcionando ⭐"}
 
 @app.post("/google-login")
 def google_login(request: GoogleLoginRequest):
     try:
-        # Verificar token con Google
         idinfo = id_token.verify_oauth2_token(request.token, google_requests.Request(), GOOGLE_CLIENT_ID)
         email = idinfo['email']
+        name = idinfo.get('name', 'Usuario')
         
-        # Guardar/Actualizar usuario
         user = users_collection.find_one({"email": email})
         if not user:
             users_collection.insert_one({
                 "email": email,
+                "name": name,
                 "google_id": idinfo['sub'],
                 "created_at": datetime.now()
             })
         
-        # Generar nuestro token
-        access_token = create_access_token(data={"sub": email})
+        # Guardamos el nombre en el token para usarlo luego
+        access_token = create_access_token(data={"sub": email, "name": name})
         return {"access_token": access_token, "token_type": "bearer", "email": email}
 
     except ValueError:
         raise HTTPException(status_code=401, detail="Token Google inválido")
 
-# --- ENDPOINTS EJEMPLO (CRUD) ---
+# --- ENDPOINTS REVIEWS (LÓGICA EXAMEN) ---
 
-@app.get("/items", response_model=List[ItemResponse])
-def get_items(user: dict = Depends(get_current_user)):
-    # Ejemplo: Devolver items del usuario
-    items = list(items_collection.find({"owner": user["email"]}))
-    return [fix_id(item) for item in items]
+@app.get("/reviews", response_model=List[ReviewResponse])
+def get_reviews(user: dict = Depends(get_current_user)):
+    reviews = list(reviews_collection.find({}))
+    return [fix_id(r) for r in reviews]
 
-@app.post("/items")
-async def create_item(title: str = Form(...), file: UploadFile = File(...), user: dict = Depends(get_current_user)):
-    # Ejemplo: Subir imagen y guardar
+@app.post("/reviews")
+async def create_review(
+    establishment: str = Form(...),
+    address: str = Form(...),
+    rating: int = Form(...),
+    file: UploadFile = File(...),
+    user_data: dict = Depends(get_current_user)
+):
+    # 1. Subir imagen (Requisito: Imágenes [cite: 29])
     up_res = cloudinary.uploader.upload(file.file)
-    item = {
-        "title": title,
-        "image_url": up_res.get("secure_url"),
-        "owner": user["email"]
+    image_url = up_res.get("secure_url")
+
+    # 2. Geocoding (Requisito: Mapas y Geocoding [cite: 33])
+    lat, lon = await get_coordinates(address)
+
+    # 3. Extraer datos del token (Requisito: Creación de reseñas [cite: 27, 28])
+    # El examen pide guardar el token, fechas y autor tomados del token.
+    token_payload = user_data["payload"]
+    
+    new_review = {
+        "establishment": establishment,
+        "address": address,
+        "rating": rating,
+        "image_url": image_url,
+        "latitude": lat,
+        "longitude": lon,
+        # Datos del autor y token
+        "author_email": user_data["email"],
+        "author_name": token_payload.get("name", "Anónimo"),
+        "raw_token": user_data["raw_token"], # Guardamos el token usado
+        "token_issued_at": token_payload.get("iat", 0),
+        "token_expires_at": token_payload.get("exp", 0)
     }
-    items_collection.insert_one(item)
-    return {"message": "Item creado"}
+    
+    res = reviews_collection.insert_one(new_review)
+    new_review["_id"] = res.inserted_id
+    return fix_id(new_review)

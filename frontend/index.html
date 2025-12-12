@@ -2,37 +2,80 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Mapa de Examen</title>
+    <title>ReViews - Examen</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Estilos específicos para el listado */
+        #reviewListContainer { max-height: 400px; overflow-y: auto; border: 1px solid #ddd; margin-top: 10px; padding: 10px; }
+        .review-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .review-item:hover { background-color: #f9f9f9; }
+        .stars { color: gold; }
+    </style>
 </head>
 <body>
     <div class="container">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h1>Dashboard</h1>
-            <button onclick="logout()">Cerrar Sesión</button>
+            <h1>⭐ ReViews</h1>
+            <button onclick="logout()" style="background: red;">Salir</button>
         </div>
-
         <p id="userInfo">Cargando...</p>
 
-        <div id="adminPanel" class="hidden">
-            <h3>Añadir Nuevo Lugar</h3>
-            <form id="itemForm">
-                <input type="text" id="title" placeholder="Título del lugar" required>
-                <input type="text" id="address" placeholder="Dirección (Ej: Calle Gran Via 1, Madrid)" required>
-                <input type="file" id="file" required>
-                <button type="submit" style="background: green; color: white; border: none; padding: 10px;">Guardar y Subir</button>
-            </form>
-            <hr>
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 20px;">
+            
+            <div style="flex: 1;">
+                <h3>📝 Nueva Reseña</h3>
+                <form id="reviewForm">
+                    <input type="text" id="revName" placeholder="Nombre Establecimiento" required>
+                    <input type="text" id="revAddress" placeholder="Dirección Postal" required>
+                    <label>Valoración (0-5):</label>
+                    <input type="number" id="revRating" min="0" max="5" required>
+                    <input type="file" id="revFile" required>
+                    <button type="submit" style="background: green;">Publicar Reseña</button>
+                </form>
+            </div>
+
+            <div style="flex: 1;">
+                <h3>📍 Centrar Mapa</h3>
+                <p>Busca una calle para mover el mapa:</p>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="mapSearchAddress" placeholder="Ej: Calle Larios, Málaga">
+                    <button onclick="searchMapLocation()">Buscar</button>
+                </div>
+                <br>
+                <div id="map" style="height: 250px; border: 1px solid #ccc;"></div>
+            </div>
         </div>
 
-        <h3>Mapa</h3>
-        <div id="map"></div>
+        <hr>
 
-        <h3>Listado de Lugares</h3>
-        <div id="items-list"></div>
+        <div style="display: flex; gap: 20px;">
+            
+            <div style="flex: 1;">
+                <h3>📋 Listado de Reseñas</h3>
+                <p><small>Haz clic en una reseña o marcador para ver detalles</small></p>
+                <div id="reviewListContainer">
+                    <ul id="reviewsList" style="list-style: none; padding: 0;"></ul>
+                </div>
+            </div>
+
+            <div id="detailsPanel" style="flex: 1; border: 1px solid #007bff; padding: 15px; border-radius: 8px; display: none;">
+                <h3 style="margin-top: 0;">ℹ️ Detalles de la Reseña</h3>
+                <h2 id="detName">Nombre</h2>
+                <div id="detRating" class="stars"></div>
+                <p>📍 <span id="detAddress">Dirección</span></p>
+                <hr>
+                <p><strong>Autor:</strong> <span id="detAuthor"></span></p>
+                <p><strong>Token Emitido:</strong> <span id="detIat"></span></p>
+                <p><strong>Token Caduca:</strong> <span id="detExp"></span></p>
+                <p style="word-break: break-all; font-size: 0.8em; color: gray;"><strong>Token:</strong> <span id="detToken"></span></p>
+                <img id="detImage" src="" style="width: 100%; max-height: 200px; object-fit: cover; margin-top: 10px; border-radius: 5px;">
+                <br><br>
+                <button onclick="closeDetails()" style="background: gray;">Cerrar Detalles</button>
+            </div>
+        </div>
+
     </div>
-
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="app.js"></script>
 </body>
